@@ -21,10 +21,18 @@ document.addEventListener("DOMContentLoaded", () => {
         const spotsLeft = details.max_participants - details.participants.length;
 
         // Create participants list
+
         const participantsList = details.participants.length
-          ? `<ul class="participants-list">${details.participants
-              .map((participant) => `<li>${participant}</li>`)
-              .join("")}</ul>`
+          ? `<div class="participants-list">${details.participants
+              .map((participant) => `
+                <div class="participant-item">
+                  <span class="participant-email">${participant}</span>
+                  <button class="delete-participant" title="Remove participant" data-activity="${name}" data-email="${participant}">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                </div>
+              `)
+              .join("")}</div>`
           : "<p class='no-participants'>No participants yet.</p>";
 
         activityCard.innerHTML = `
@@ -70,12 +78,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const result = await response.json();
 
       if (response.ok) {
-        messageDiv.textContent = result.message;
-        messageDiv.className = "success";
-        signupForm.reset();
+        // Show success message and refresh activities
+        messageDiv.textContent = result.message || "Signed up successfully!";
+        messageDiv.className = "message success";
+        fetchActivities();
       } else {
-        messageDiv.textContent = result.detail || "An error occurred";
-        messageDiv.className = "error";
+        messageDiv.textContent = result.detail || "Failed to sign up.";
+        messageDiv.className = "message error";
       }
 
       messageDiv.classList.remove("hidden");
@@ -89,6 +98,29 @@ document.addEventListener("DOMContentLoaded", () => {
       messageDiv.className = "error";
       messageDiv.classList.remove("hidden");
       console.error("Error signing up:", error);
+    }
+  });
+
+  // Handle participant delete (unregister)
+  activitiesList.addEventListener("click", async (event) => {
+    if (event.target.closest && event.target.closest(".delete-participant")) {
+      const btn = event.target.closest(".delete-participant");
+      const activity = btn.getAttribute("data-activity");
+      const email = btn.getAttribute("data-email");
+      if (!activity || !email) return;
+      try {
+        const response = await fetch(`/activities/${encodeURIComponent(activity)}/unregister?email=${encodeURIComponent(email)}`, {
+          method: "POST",
+        });
+        if (response.ok) {
+          fetchActivities();
+        } else {
+          const result = await response.json();
+          alert(result.detail || "Failed to remove participant.");
+        }
+      } catch (error) {
+        alert("Failed to remove participant. Please try again.");
+      }
     }
   });
 
